@@ -12,4 +12,16 @@ jobs:
     steps:
       - name: Log message
         run: echo "Bismillah! The workflow is running successfully."
-        
+  listing_buckets:
+    steps:
+      - name: Set up aws credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.IAM_ROLE }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: List S3 buckets
+        env:
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          echo "Listing S3 buckets:"
+          aws s3 ls
