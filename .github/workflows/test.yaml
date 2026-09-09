@@ -6,12 +6,16 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
-  log_message:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Log message
-        run: echo "Bismillah! The workflow is running successfully."
+  # log_message:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Log message
+  #       run: echo "Bismillah! The workflow is running successfully."
   listing_buckets:
     steps:
       - name: Set up aws credentials
