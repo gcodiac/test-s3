@@ -11,12 +11,8 @@ permissions:
   id-token: write
 
 jobs:
-  # log_message:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Log message
-  #       run: echo "Bismillah! The workflow is running successfully."
   listing_buckets:
+    runs-on: ubuntu-latest
     steps:
       - name: Set up aws credentials
         uses: aws-actions/configure-aws-credentials@v6
