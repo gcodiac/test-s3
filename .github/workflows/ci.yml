@@ -1,0 +1,76 @@
+# ---------------------------------------------------------------------------
+# Continuous integration
+#
+# CI answers one question: is this change safe to merge? It runs on every pull
+# request, needs no credentials, and touches nothing outside the runner.
+#
+# The distinction from CD matters. This workflow can run on a fork's pull
+# request from a stranger, because the worst it can do is fail. Deployment is
+# a separate workflow with separate permissions — see deploy.yml.
+# ---------------------------------------------------------------------------
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - platform-engineering
+  workflow_dispatch:
+
+# Only the newest run per branch matters. Cancelling superseded runs saves
+# minutes and stops a stale red X from sitting on a branch that is already
+# fixed.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only. A job that cannot write cannot be turned into a supply chain
+# problem by a dependency, and GitHub's default token is broader than this.
+permissions:
+  contents: read
+
+jobs:
+  site:
+    name: Static site
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Show the toolchain
+        run: |
+          echo "node    $(node --version)"
+          echo "python  $(python3 --version)"
+          echo "bash    ${BASH_VERSION}"
+
+      - name: Run site checks
+        run: ./scripts/test.sh
+
+      # The build artifact is what a deployment would upload. Producing it in
+      # CI proves the build works on a clean checkout, and keeping it lets a
+      # reviewer download exactly what would have gone live.
+      - name: Build the deployable site
+        run: ./scripts/build.sh
+
+      - name: Upload the build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-${{ github.sha }}
+          path: dist/
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Summarise
+        run: |
+          {
+            echo "### Static site"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Site checks | passed |"
+            echo "| Build | \`dist/\` produced from \`${GITHUB_SHA:0:7}\` |"
+            echo "| Artifact | \`site-${GITHUB_SHA}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

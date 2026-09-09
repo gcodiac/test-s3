@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cloud Launchpad — Ship static sites like a platform team</title>
+  <meta name="description" content="Cloud Launchpad is a reference static site deployed to Amazon S3 behind CloudFront with TLS, provisioned by Terraform and shipped by GitHub Actions.">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#070b16">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Cloud Launchpad">
+  <meta property="og:description" content="A static site hosted on private S3, delivered by CloudFront over HTTPS, provisioned with Terraform and shipped by GitHub Actions.">
+  <meta property="og:image" content="assets/images/og-cover.png">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+
+  <!-- Resolve the theme before first paint so there is no flash of the wrong
+       colour scheme. The full behaviour lives in js/app.js. -->
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('cloud-launchpad:theme');
+        var light = stored ? stored === 'light'
+                           : window.matchMedia('(prefers-color-scheme: light)').matches;
+        document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+      } catch (e) { /* storage unavailable — keep the default */ }
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <!-- Icon sprite: every icon on the page is defined once and referenced with <use>. -->
+  <svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-rocket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M13.5 3.5C17 3 21 5.5 21 9c0 5-4.5 9-9.5 11L9 17.5 6.5 15C8.5 10 12 5 13.5 3.5Z"/>
+      <circle cx="14.5" cy="9.5" r="1.8"/><path d="M6.5 15 3 16.5 4.5 20l3.2-1.4M6.5 15l2.5 2.5"/>
+    </symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3 5 6v5.5c0 4.3 2.9 8.2 7 9.5 4.1-1.3 7-5.2 7-9.5V6l-7-3Z"/><path d="m9 12 2 2 4-4"/>
+    </symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3Z"/>
+    </symbol>
+    <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m8 6-5 6 5 6M16 6l5 6-5 6M14 4l-4 16"/>
+    </symbol>
+    <symbol id="i-loop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 12a8 8 0 0 1 13.7-5.7L20 8M20 12a8 8 0 0 1-13.7 5.7L4 16"/><path d="M20 4v4h-4M4 20v-4h4"/>
+    </symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4.5" y="10" width="15" height="10.5" rx="2.2"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10M12 14.5v2.5"/>
+    </symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 18a9 9 0 1 1 16 0"/><path d="m12 14 4-4"/><circle cx="12" cy="15" r="1.6"/>
+    </symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="7" cy="5.5" r="2.2"/><circle cx="7" cy="18.5" r="2.2"/><circle cx="17" cy="9" r="2.2"/>
+      <path d="M7 7.7v8.6M17 11.2c0 3-2.6 4.1-5.3 4.6"/>
+    </symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+      <circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+    </symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/>
+    </symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12h13M13 6l6 6-6 6"/>
+    </symbol>
+    <symbol id="i-github" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.36 1.09 2.94.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/>
+    </symbol>
+  </svg>
+
+  <div class="aurora" aria-hidden="true">
+    <span class="aurora__blob aurora__blob--a"></span>
+    <span class="aurora__blob aurora__blob--b"></span>
+    <span class="aurora__blob aurora__blob--c"></span>
+    <span class="aurora__grid"></span>
+  </div>
+
+  <header class="site-header" id="top">
+    <div class="shell site-header__inner">
+      <a class="brand" href="#top" aria-label="Cloud Launchpad, back to top">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path d="M16 3.5 27 10v12L16 28.5 5 22V10l11-6.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+            <path d="M16 11.5 21.5 15v5L16 23l-5.5-3v-5L16 11.5Z" fill="currentColor" opacity=".85"/>
+          </svg>
+        </span>
+        <span class="brand__text">Cloud<span>Launchpad</span></span>
+      </a>
+
+      <nav class="nav" id="primary-nav" aria-label="Primary">
+        <a href="#platform">Platform</a>
+        <a href="#pipeline">Pipeline</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#stack">Stack</a>
+      </nav>
+
+      <div class="site-header__actions">
+        <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch to light theme" aria-pressed="false">
+          <svg class="icon icon--sun" aria-hidden="true"><use href="#i-sun"></use></svg>
+          <svg class="icon icon--moon" aria-hidden="true"><use href="#i-moon"></use></svg>
+        </button>
+        <a class="btn btn--ghost hide-sm" href="https://github.com/gcodiac/aws-s3-static-site-cicd" rel="noopener">
+          <svg class="icon" aria-hidden="true"><use href="#i-github"></use></svg>
+          <span>Repository</span>
+        </a>
+        <button class="icon-btn nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Open navigation">
+          <span class="nav-toggle__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- ───────────────────────── Hero ───────────────────────── -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="shell hero__inner">
+        <div class="hero__copy reveal">
+          <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> Static hosting, engineered properly</p>
+          <h1 id="hero-title">
+            Ship static sites like a
+            <span class="gradient-text">platform&nbsp;team</span>
+          </h1>
+          <p class="lede">
+            A private Amazon S3 bucket, a global CloudFront distribution, TLS from AWS Certificate
+            Manager, every resource declared in Terraform and every release delivered by GitHub Actions.
+            No servers to patch, no console clicking, no snowflakes.
+          </p>
+          <div class="hero__cta">
+            <a class="btn btn--primary" href="#pipeline">
+              <span>See the pipeline</span>
+              <svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg>
+            </a>
+            <a class="btn btn--ghost" href="#architecture">Read the architecture</a>
+          </div>
+          <ul class="hero__trust" role="list">
+            <li><svg class="icon" aria-hidden="true"><use href="#i-lock"></use></svg> Origin bucket stays private</li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg> HTTPS enforced at the edge</li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-loop"></use></svg> Reproducible from code</li>
+          </ul>
+        </div>
+
+        <div class="hero__visual reveal" data-reveal-delay="120">
+          <div class="glass console" data-tilt>
+            <div class="console__chrome">
+              <span class="dot dot--red"></span><span class="dot dot--amber"></span><span class="dot dot--green"></span>
+              <span class="console__title">deploy · main → production</span>
+              <span class="badge badge--ok">passing</span>
+            </div>
+            <pre class="console__body" id="deploy-log" aria-live="polite" aria-label="Simulated deployment log"></pre>
+            <div class="console__foot">
+              <div class="progress"><span class="progress__bar" id="deploy-progress"></span></div>
+              <span class="console__meta" id="deploy-status">idle</span>
+            </div>
+          </div>
+
+          <div class="glass edge-card" aria-label="Edge delivery summary">
+            <div class="edge-card__row">
+              <span class="edge-card__label">Edge cache</span>
+              <span class="chip chip--ok">HIT</span>
+            </div>
+            <div class="edge-card__row">
+              <span class="edge-card__label">Protocol</span>
+              <span class="mono">HTTP/3 · TLS 1.2+</span>
+            </div>
+            <div class="edge-card__row">
+              <span class="edge-card__label">Origin</span>
+              <span class="mono">s3 · private · OAC</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── Stats ───────────────────────── -->
+    <section class="stats" aria-label="Platform characteristics">
+      <div class="shell stats__grid">
+        <div class="stat reveal">
+          <span class="stat__value" data-count-to="600" data-count-suffix="+">0</span>
+          <span class="stat__label">Edge locations in the CloudFront network</span>
+        </div>
+        <div class="stat reveal" data-reveal-delay="80">
+          <span class="stat__value" data-count-to="11" data-count-suffix=" nines">0</span>
+          <span class="stat__label">S3 durability by design &mdash; 99.999999999%</span>
+        </div>
+        <div class="stat reveal" data-reveal-delay="160">
+          <span class="stat__value" data-count-to="100" data-count-suffix="%">0</span>
+          <span class="stat__label">Of this platform declared in Terraform</span>
+        </div>
+        <div class="stat reveal" data-reveal-delay="240">
+          <span class="stat__value" data-count-to="0" data-count-suffix="">0</span>
+          <span class="stat__label">Long-lived AWS keys stored in GitHub</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── Platform ───────────────────────── -->
+    <section class="section" id="platform" aria-labelledby="platform-title">
+      <div class="shell">
+        <header class="section__head reveal">
+          <p class="eyebrow">The platform</p>
+          <h2 id="platform-title">Everything a small site needs, nothing it doesn't</h2>
+          <p class="section__sub">
+            Each capability below maps to a real AWS resource in <code>infra/</code> and a real
+            step in the delivery pipeline. Nothing here is decorative.
+          </p>
+        </header>
+
+        <div class="cards">
+          <article class="glass card reveal" data-spotlight>
+            <span class="card__icon"><svg class="icon" aria-hidden="true"><use href="#i-lock"></use></svg></span>
+            <h3>Private origin, public site</h3>
+            <p>The bucket blocks all public access. Only the CloudFront distribution can read objects, authorised by an Origin Access Control signature on every request.</p>
+            <p class="card__meta mono">aws_s3_bucket_public_access_block</p>
+          </article>
+
+          <article class="glass card reveal" data-reveal-delay="60" data-spotlight>
+            <span class="card__icon"><svg class="icon" aria-hidden="true"><use href="#i-globe"></use></svg></span>
+            <h3>Global edge delivery</h3>
+            <p>Content is cached at hundreds of points of presence, compressed with Brotli or gzip, and served from the location closest to the visitor.</p>
+            <p class="card__meta mono">aws_cloudfront_distribution</p>
+          </article>
+
+          <article class="glass card reveal" data-reveal-delay="120" data-spotlight>
+            <span class="card__icon"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg></span>
+            <h3>TLS without renewals</h3>
+            <p>Certificates are issued and rotated by AWS Certificate Manager. HTTP is redirected to HTTPS at the edge, so plaintext never reaches the origin.</p>
+            <p class="card__meta mono">aws_acm_certificate</p>
+          </article>
+
+          <article class="glass card reveal" data-spotlight>
+            <span class="card__icon"><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg></span>
+            <h3>Infrastructure as code</h3>
+            <p>Buckets, distributions, policies and roles are declared in Terraform. The plan is reviewed in a pull request before anything reaches the account.</p>
+            <p class="card__meta mono">terraform plan · terraform apply</p>
+          </article>
+
+          <article class="glass card reveal" data-reveal-delay="60" data-spotlight>
+            <span class="card__icon"><svg class="icon" aria-hidden="true"><use href="#i-branch"></use></svg></span>
+            <h3>Keyless deployments</h3>
+            <p>GitHub Actions exchanges a short-lived OIDC token for an IAM role. No long-lived AWS access keys are ever stored as repository secrets.</p>
+            <p class="card__meta mono">sts:AssumeRoleWithWebIdentity</p>
+          </article>
+
+          <article class="glass card reveal" data-reveal-delay="120" data-spotlight>
+            <span class="card__icon"><svg class="icon" aria-hidden="true"><use href="#i-gauge"></use></svg></span>
+            <h3>Verified releases</h3>
+            <p>After each deploy the pipeline invalidates the cache and re-requests the site, asserting the live build identifier matches the commit that triggered it.</p>
+            <p class="card__meta mono">scripts/verify-deployment.sh</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── Pipeline ───────────────────────── -->
+    <section class="section section--tint" id="pipeline" aria-labelledby="pipeline-title">
+      <div class="shell">
+        <header class="section__head reveal">
+          <p class="eyebrow">Delivery</p>
+          <h2 id="pipeline-title">From commit to edge in five steps</h2>
+          <p class="section__sub">
+            The same path runs for every change. Nobody uploads files by hand, and nobody needs
+            production credentials on their laptop.
+          </p>
+        </header>
+
+        <ol class="flow" role="list">
+          <li class="flow__step glass reveal">
+            <span class="flow__index">01</span>
+            <h3>Commit &amp; pull request</h3>
+            <p>A branch is pushed and opened for review. The diff is the unit of change for both the site and the infrastructure.</p>
+            <span class="flow__tag mono">git commit · git push</span>
+          </li>
+          <li class="flow__step glass reveal" data-reveal-delay="60">
+            <span class="flow__index">02</span>
+            <h3>Continuous integration</h3>
+            <p>Markup, links, JavaScript syntax and Terraform formatting are validated. A <code>terraform plan</code> is posted for review.</p>
+            <span class="flow__tag mono">.github/workflows/ci.yml</span>
+          </li>
+          <li class="flow__step glass reveal" data-reveal-delay="120">
+            <span class="flow__index">03</span>
+            <h3>Authenticate to AWS</h3>
+            <p>The deploy job requests an OIDC token from GitHub and trades it for temporary credentials on a least-privilege IAM role.</p>
+            <span class="flow__tag mono">id-token: write</span>
+          </li>
+          <li class="flow__step glass reveal" data-reveal-delay="180">
+            <span class="flow__index">04</span>
+            <h3>Sync to S3</h3>
+            <p>Fingerprinted assets are uploaded with long cache lifetimes, HTML with a short one, and files removed from the repository are deleted from the bucket.</p>
+            <span class="flow__tag mono">aws s3 sync --delete</span>
+          </li>
+          <li class="flow__step glass reveal" data-reveal-delay="240">
+            <span class="flow__index">05</span>
+            <h3>Invalidate &amp; verify</h3>
+            <p>CloudFront is told to drop the old objects, then the pipeline fetches the live URL and asserts the deployed build matches the commit.</p>
+            <span class="flow__tag mono">create-invalidation "/*"</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── Architecture ───────────────────────── -->
+    <section class="section" id="architecture" aria-labelledby="architecture-title">
+      <div class="shell arch">
+        <div class="arch__copy reveal">
+          <p class="eyebrow">Architecture</p>
+          <h2 id="architecture-title">One request path, locked down end to end</h2>
+          <p class="section__sub">
+            The bucket has no website endpoint and no public policy. It is reachable only through
+            CloudFront, which signs each origin request with its Origin Access Control identity.
+          </p>
+          <dl class="arch__list">
+            <div>
+              <dt><svg class="icon" aria-hidden="true"><use href="#i-globe"></use></svg> Viewer → CloudFront</dt>
+              <dd>DNS resolves to the nearest edge location. HTTP is redirected to HTTPS; the response is compressed and cached.</dd>
+            </div>
+            <div>
+              <dt><svg class="icon" aria-hidden="true"><use href="#i-lock"></use></svg> CloudFront → S3</dt>
+              <dd>On a cache miss the edge calls the bucket's REST endpoint using SigV4 credentials from its Origin Access Control.</dd>
+            </div>
+            <div>
+              <dt><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg> Bucket policy</dt>
+              <dd>Access is granted to the CloudFront service principal, and only when the source ARN matches this exact distribution.</dd>
+            </div>
+          </dl>
+        </div>
+
+        <figure class="arch__figure reveal" data-reveal-delay="120">
+          <div class="glass diagram" role="img" aria-label="Request flow: browser to CloudFront over HTTPS, CloudFront to a private S3 bucket using Origin Access Control, with public access to the bucket blocked.">
+            <div class="node node--client">
+              <span class="node__kind">Viewer</span>
+              <strong>Browser</strong>
+              <span class="node__meta mono">GET /index.html</span>
+            </div>
+            <div class="wire"><span class="wire__label mono">HTTPS</span><span class="wire__packet"></span></div>
+            <div class="node node--edge">
+              <span class="node__kind">Amazon CloudFront</span>
+              <strong>Edge location</strong>
+              <span class="node__meta mono">TLS · cache · compress</span>
+            </div>
+            <div class="wire"><span class="wire__label mono">SigV4 · OAC</span><span class="wire__packet"></span></div>
+            <div class="node node--origin">
+              <span class="node__kind">Amazon S3</span>
+              <strong>Private bucket</strong>
+              <span class="node__meta mono">block public access: on</span>
+            </div>
+            <div class="diagram__blocked">
+              <span class="x" aria-hidden="true">✕</span>
+              <span>Direct public requests to the bucket return <span class="mono">403 AccessDenied</span></span>
+            </div>
+          </div>
+          <figcaption>Internet → CloudFront → Origin Access Control → private S3 bucket.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── Stack ───────────────────────── -->
+    <section class="section section--tint" id="stack" aria-labelledby="stack-title">
+      <div class="shell">
+        <header class="section__head reveal">
+          <p class="eyebrow">Stack</p>
+          <h2 id="stack-title">The services doing the work</h2>
+          <p class="section__sub">Eight moving parts, each with a single clear job.</p>
+        </header>
+
+        <ul class="tech" role="list">
+          <li class="glass tech__item reveal"><strong>Amazon S3</strong><span>Durable object storage for the built site</span></li>
+          <li class="glass tech__item reveal" data-reveal-delay="40"><strong>Amazon CloudFront</strong><span>Global CDN, TLS termination, caching</span></li>
+          <li class="glass tech__item reveal" data-reveal-delay="80"><strong>AWS Certificate Manager</strong><span>Free, auto-renewing public certificates</span></li>
+          <li class="glass tech__item reveal" data-reveal-delay="120"><strong>Origin Access Control</strong><span>Signed, private edge-to-origin requests</span></li>
+          <li class="glass tech__item reveal" data-reveal-delay="160"><strong>AWS IAM</strong><span>Least-privilege roles and trust policies</span></li>
+          <li class="glass tech__item reveal" data-reveal-delay="200"><strong>Terraform</strong><span>Declarative, reviewable infrastructure</span></li>
+          <li class="glass tech__item reveal" data-reveal-delay="240"><strong>GitHub Actions</strong><span>CI checks and the deployment pipeline</span></li>
+          <li class="glass tech__item reveal" data-reveal-delay="280"><strong>OpenID Connect</strong><span>Short-lived credentials, no stored keys</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ───────────────────────── CTA ───────────────────────── -->
+    <section class="cta" aria-labelledby="cta-title">
+      <div class="shell">
+        <div class="glass cta__panel reveal">
+          <span class="cta__glow" aria-hidden="true"></span>
+          <h2 id="cta-title">Build it, break it, then destroy it</h2>
+          <p>
+            Clone the repository, run the site locally, provision the infrastructure with Terraform,
+            wire up the pipeline — then tear it all down with a single command and prove you can
+            rebuild it from scratch.
+          </p>
+          <div class="cta__actions">
+            <a class="btn btn--primary" href="https://github.com/gcodiac/aws-s3-static-site-cicd" rel="noopener">
+              <svg class="icon" aria-hidden="true"><use href="#i-github"></use></svg>
+              <span>Open the repository</span>
+            </a>
+            <code class="cta__code mono">git clone git@github.com:gcodiac/aws-s3-static-site-cicd.git</code>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell site-footer__inner">
+      <div class="site-footer__brand">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path d="M16 3.5 27 10v12L16 28.5 5 22V10l11-6.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+            <path d="M16 11.5 21.5 15v5L16 23l-5.5-3v-5L16 11.5Z" fill="currentColor" opacity=".85"/>
+          </svg>
+        </span>
+        <div>
+          <p class="site-footer__title">Cloud Launchpad</p>
+          <p class="site-footer__note">A reference static-hosting platform on AWS.</p>
+        </div>
+      </div>
+
+      <nav class="site-footer__nav" aria-label="Footer">
+        <a href="#platform">Platform</a>
+        <a href="#pipeline">Pipeline</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#stack">Stack</a>
+      </nav>
+
+      <p class="site-footer__build mono" id="build-info">local build</p>
+    </div>
+  </footer>
+
+  <script src="js/app.js" defer></script>
+</body>
+</html>

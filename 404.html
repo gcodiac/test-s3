@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>404 — Cloud Launchpad</title>
+  <meta name="description" content="The requested page could not be found.">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#070b16">
+  <meta name="robots" content="noindex">
+
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+  <!-- Root-relative paths on purpose: CloudFront serves this document for a
+       missing object at *any* path (/blog/old-post, /a/b/c), so relative URLs
+       would resolve against the wrong directory. -->
+  <link rel="stylesheet" href="/css/styles.css">
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('cloud-launchpad:theme');
+        var light = stored ? stored === 'light'
+                           : window.matchMedia('(prefers-color-scheme: light)').matches;
+        document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+      } catch (e) { /* storage unavailable — keep the default */ }
+    })();
+  </script>
+  <style>
+    .error { min-height: 100vh; display: grid; place-items: center; padding: var(--gutter); }
+    .error__panel { padding: clamp(2.25rem, 5vw, 3.5rem); text-align: center; max-width: 34rem; }
+    .error__code {
+      font-family: var(--mono); font-size: clamp(3.5rem, 12vw, 5.5rem); font-weight: 700;
+      letter-spacing: -0.05em; line-height: 1;
+      background: var(--gradient); -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .error h1 { font-size: clamp(1.5rem, 4vw, 2rem); margin-top: .75rem; }
+    .error p { margin-top: 1rem; color: var(--text-muted); }
+    .error__path {
+      display: inline-block; margin-top: 1.25rem; max-width: 100%; overflow-x: auto;
+      padding: .5rem .9rem; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text-faint); font-size: .8rem; white-space: nowrap;
+    }
+    .error .btn { margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true">
+    <span class="aurora__blob aurora__blob--a"></span>
+    <span class="aurora__blob aurora__blob--b"></span>
+    <span class="aurora__grid"></span>
+  </div>
+
+  <main class="error">
+    <div class="glass error__panel">
+      <p class="error__code">404</p>
+      <h1>This object is not in the bucket</h1>
+      <p>
+        CloudFront asked the origin for this path and S3 had nothing to return.
+        The link may be outdated, or the file may not have been included in the last deployment.
+      </p>
+      <p class="error__path mono" id="requested-path">/</p>
+      <p><a class="btn btn--primary" href="/">Back to the homepage</a></p>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var el = document.getElementById('requested-path');
+      if (el) el.textContent = location.pathname + location.search;
+    })();
+  </script>
+</body>
+</html>

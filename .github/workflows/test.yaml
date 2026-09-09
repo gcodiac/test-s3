@@ -1,0 +1,14 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+  jobs:
+    log_message:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Log message
+          run: echo "Bismillah! The workflow is running successfully."

@@ -1,0 +1,169 @@
+# ---------------------------------------------------------------------------
+# Terraform checks
+#
+# Formatting and validation need no AWS credentials and no state, so they run
+# on every pull request that touches infra/, including from forks.
+#
+# `terraform plan` is a different animal. A plan refreshes real resources
+# against real state, which means credentials, and it is only meaningful once
+# state is remote — with local state, a plan in CI has nothing to compare
+# against and cheerfully proposes creating the entire platform from scratch.
+#
+# The plan job below is therefore opt-in. Move to a remote backend (see
+# infra/backend.tf.example), set the repository variable
+# ENABLE_TERRAFORM_PLAN to "true", and it starts running.
+# ---------------------------------------------------------------------------
+
+name: Terraform
+
+on:
+  pull_request:
+    paths:
+      - 'infra/**'
+      - '.github/workflows/terraform.yml'
+  push:
+    branches:
+      - main
+      - platform-engineering
+    paths:
+      - 'infra/**'
+      - '.github/workflows/terraform.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: 'true'
+  # Terraform's own colour codes make the Actions log harder to read, not
+  # easier.
+  TF_CLI_ARGS: '-no-color'
+
+jobs:
+  validate:
+    name: Format and validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      # -check fails rather than reformatting. Formatting is not a matter of
+      # taste in Terraform: `terraform fmt` has one canonical output, so a
+      # diff over whitespace is a diff nobody has to argue about in review.
+      - name: terraform fmt
+        run: terraform fmt -check -recursive -diff
+
+      # -backend=false skips backend initialisation, so this works with no
+      # credentials and no state. It still downloads providers, because
+      # validation needs the schemas.
+      - name: terraform init
+        run: terraform init -backend=false -input=false
+
+      # Type checking, required arguments, references that resolve, provider
+      # schema conformance. No AWS calls, so it cannot tell you whether the
+      # bucket name is taken — that is what plan is for.
+      - name: terraform validate
+        run: terraform validate
+
+      - name: Summarise
+        if: always()
+        run: |
+          {
+            echo "### Terraform"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| fmt | ${{ job.status == 'success' && 'passed' || 'see log' }} |"
+            echo "| validate | ${{ job.status == 'success' && 'passed' || 'see log' }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  plan:
+    name: Plan
+    needs: validate
+    # Opt-in: needs remote state and a role that can read the account.
+    if: vars.ENABLE_TERRAFORM_PLAN == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+
+    permissions:
+      contents: read
+      # Required for the OIDC token exchange.
+      id-token: write
+      # So the plan can be posted back onto the pull request.
+      pull-requests: write
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Authenticate to AWS
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.TF_PLAN_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: terraform-plan-${{ github.run_id }}
+
+      - name: terraform init
+        run: terraform init -input=false
+
+      # -detailed-exitcode returns 0 for no changes, 2 for changes and 1 for
+      # an error, so "the plan is empty" is a distinguishable outcome rather
+      # than something to grep the output for.
+      - name: terraform plan
+        id: plan
+        run: |
+          set +e
+          terraform plan -input=false -lock-timeout=60s -detailed-exitcode -out=tfplan
+          code=$?
+          set -e
+          echo "exitcode=$code" >> "$GITHUB_OUTPUT"
+          [ "$code" -eq 1 ] && exit 1
+          terraform show -no-color tfplan > plan.txt
+          exit 0
+
+      - name: Summarise the plan
+        run: |
+          {
+            echo "### Terraform plan"
+            echo
+            if [ "${{ steps.plan.outputs.exitcode }}" = "0" ]; then
+              echo "No changes. Infrastructure matches the configuration."
+            else
+              echo "Changes proposed. Review before merging."
+            fi
+            echo
+            echo '<details><summary>Plan output</summary>'
+            echo
+            echo '```terraform'
+            # Keep the summary under GitHub's 1 MB limit.
+            head -c 60000 plan.txt
+            echo
+            echo '```'
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # A saved plan file contains resource attributes and is not an artifact
+      # to leave lying around in a public repository.
+      - name: Remove the saved plan
+        if: always()
+        run: rm -f tfplan plan.txt

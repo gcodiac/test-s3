@@ -1,0 +1,59 @@
+# ---------------------------------------------------------------------------
+# Course material
+# ---------------------------------------------------------------------------
+# The step-by-step lessons live alongside this repository but are deliberately
+# not part of it. The repository is the engineering project; the course is the
+# instructor's material.
+learning/
+
+# ---------------------------------------------------------------------------
+# Build output
+# ---------------------------------------------------------------------------
+# scripts/build.sh assembles the deployable site here. It is derived from the
+# tracked source files, so it is never committed.
+dist/
+
+# ---------------------------------------------------------------------------
+# Terraform
+# ---------------------------------------------------------------------------
+# Provider plugins and module caches — re-downloaded by `terraform init`.
+.terraform/
+.terraform.tfstate.lock.info
+
+# State contains resource attributes and can contain secrets. Never commit it.
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Real variable values, including account-specific names and domains.
+# terraform.tfvars.example IS tracked and shows the expected shape.
+terraform.tfvars
+*.auto.tfvars
+!terraform.tfvars.example
+
+# Saved plans are binary and can leak values.
+*.tfplan
+plan.out
+
+# NOTE: .terraform.lock.hcl is intentionally NOT ignored. It pins provider
+# versions and hashes so CI and every engineer resolve identical providers.
+
+# ---------------------------------------------------------------------------
+# Credentials — belt and braces. Nothing here should ever exist in the repo.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+*.pem
+*.key
+credentials
+aws-credentials*
+
+# ---------------------------------------------------------------------------
+# Editors and operating systems
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
