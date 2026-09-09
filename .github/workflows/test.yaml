@@ -12,3 +12,4 @@ on:
       steps:
         - name: Log message
           run: echo "Bismillah! The workflow is running successfully."
+          
